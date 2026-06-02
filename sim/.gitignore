@@ -1,0 +1,25 @@
+# GHDL build artifacts
+work-obj*.cf
+*.cf
+*.o
+
+# Python bytecode
+__pycache__/
+*.pyc
+
+# Generated simulation outputs
+tb_pixel_writes.txt
+tb_strokes.txt
+pixels_*.txt
+render_*.png
+*.png
+
+# Per-scene decoder traces (regenerable from diff_decoders.py)
+diff_*.csv
+sim_strokes_*.txt
+py_strokes_*.txt
+
+# Generated input files (regenerable from MAME assets via prep.py)
+vec_mem.hex
+avg_prom.hex
+vec_input.bin

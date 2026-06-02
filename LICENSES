@@ -1,0 +1,4 @@
+Everything here is licensed under the GPLv3.
+Tempest is (c) 1981 Atari. The game ROMs are too, so they haven't been included
+in this package. This core is built on Videodr0me's Star Wars MiSTer chassis
+(also GPLv3); see README.md and per-file headers for third-party module licenses.

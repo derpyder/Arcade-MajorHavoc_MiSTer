@@ -1,0 +1,23 @@
+# ===== Major Havoc on the Star Wars DDR chassis =====
+# Proven SW DDR renderer + shared dpram (chassis):
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/vector_fb_ddram.sv
+set_global_assignment -name VHDL_FILE rtl/dpram.vhd
+
+# Major Havoc game module + dependencies (dual T65 + avg_majorhavoc + banked vector ROM):
+set_global_assignment -name VHDL_FILE rtl/pkg_bwidow.vhd
+set_global_assignment -name VHDL_FILE rtl/pokey.vhd
+set_global_assignment -name VHDL_FILE rtl/avg/vector_drawer.vhd
+set_global_assignment -name VHDL_FILE rtl/avg/avg_majorhavoc.vhd
+set_global_assignment -name VHDL_FILE rtl/t65/T65_Pack.vhd
+set_global_assignment -name VHDL_FILE rtl/t65/T65_MCode.vhd
+set_global_assignment -name VHDL_FILE rtl/t65/T65_ALU.vhd
+set_global_assignment -name VHDL_FILE rtl/t65/T65.vhd
+set_global_assignment -name VHDL_FILE rtl/majorhavoc.vhd
+
+# Major Havoc graft wrapper (majorhavoc + coord-scale + vector_fb_ddram + 980x700 sync):
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/mhavoc_sw.sv
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/present_gate.sv
+
+# Top + constraints:
+set_global_assignment -name SYSTEMVERILOG_FILE "Arcade-StarWars.sv"
+set_global_assignment -name SDC_FILE "Arcade-StarWars.sdc"
