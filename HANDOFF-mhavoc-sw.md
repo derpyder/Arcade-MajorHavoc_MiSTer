@@ -1,5 +1,40 @@
 # Major Havoc on the Star Wars DDR chassis — handoff (HW bring-up)
 
+> ## ▶ SESSION 8g (2026-06-05) — FULL-SCREEN: the "4 quadrants" was a VERILOG WIDTH BUG, not FB wrapping
+> **Re-did the ×1.3125 Fill the RIGHT way; the 8f revert note's guess (FB address wrapping / the
+> `in_bounds` gate failing to suppress) was WRONG.** The real cause of the 4-quadrant garble was a
+> **Verilog width-truncation bug in the re-centre multiply.** The 8f fill wrote the content-bbox centre
+> as `wire [10:0] half_x = (10'd537 * sc_n) >> 4;` — the whole expression takes its **narrow 11-bit
+> target width**, so `537*21 = 11277` truncates to 11 bits (→1037) **BEFORE** the `>>4`, giving
+> **half_x = 64 instead of 704** (and half_y = 72 not 712). Garbage centre offsets → content thrown to
+> wrong positions → the "quadrants." **ModelSim-CONFIRMED** (`sim/fb/tb_w.sv`): `(10'd537*sc_n)>>4`
+> with sc_n=21 → 64; the width-safe form → 704. Python "verified" the fill because it used the
+> *intended* math (`537*21>>4 = 704`) — it cannot see an RTL width truncation. **Lesson burned in: sim
+> the actual RTL widths, not a model.**
+>
+> **The `in_bounds` gate is actually CORRECT** (corrects the 8f note): in `vector_fb_ddram.sv`,
+> `push_pix` requires `BEAM_ON`, and `rast_beam = (|tmp_rgb) && in_bounds` gates BEAM_ON — so
+> out-of-bounds writes ARE suppressed, no wrapping. Not the cause.
+>
+> **FIX (user: "keep centered, scale 1.3125, and do it right") — `rtl/mhavoc_sw.sv` coord-map:**
+> kept the **scale-locked AVG-centre (512) centering**, NOT the content-bbox re-centre. The scaled
+> centre is `(512*sc_n)>>4 = sc_n*32 = {sc_n,5'd0} = half` — a **PURE SHIFT**, width-safe by
+> construction (no multiply-in-a-narrow-target). Moved scale to /16 granularity: `sc_n` = 21/16/12/8
+> → ×1.3125 (Fill) / ×1 / ×3⁄4 / ×1⁄2. Widened `cxs` to **15 bits** (`cx*sc_n` up to 1023·21=21483)
+> and took the `>>4` on that WIDE wire (`cxs[14:4]`). Top OSD label → `Fill (1.31x)`.
+>
+> **SIM-VERIFIED THE REAL RTL THIS TIME — `sim/fb/tb_coord.sv`** (the exact coord-map wires + widths,
+> ModelSim): centre (512,512)→**(490,360)**, `half=672` (the pure-shift centre, NOT 64), scale exactly
+> ×1.3125 (+100 AVG-x → +131 fb px, symmetric), fill window AVG-Y ∈ [238,786] (±274 of centre) → full
+> 0–720 height, coord corners (0,0)/(1023,1023) → out of bounds + gated. **RESULT: PASS.**
+>
+> **Build `build_fill_131.log` running → stage `releases/Arcade-MajorHavoc.rbf` → PENDING HW.**
+> Remaining unknown is the SAME one as before (NOT a bug now): the fill window is ±274 AVG-units of
+> centre; I calibrated to the **attract** (couldn't reach gameplay in the render sim — coin/service MUX
+> IN0[7:6] unmodelled). If real gameplay geometry is taller it could clip top/bottom — **HW-verify; OSD
+> drop to Full (×1) is the fallback.** Centre + width-safety are now proven, so a clip (if any) is a
+> clean scale-down, not a garble.
+
 > ## ▶ SESSION 8f (2026-06-02) — FLICKER = REFRESH CEILING (motion-smear); FIX = SELECTIVE-ERASE
 > **The 8d handshake and 8e Fix-B were both sim-clean but had ZERO HW effect (user: "same result"
 > twice).** The decisive clue: **"doesn't flicker when nothing is moving."** Static content fuses;

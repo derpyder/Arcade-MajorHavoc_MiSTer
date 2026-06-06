@@ -128,25 +128,33 @@ module mhavoc_sw (
 	// -> 980x720 framebuffer, OSD-tunable orientation + scale.  Pipeline:
 	//   already-centred -> scale -> centre-about-0 -> rotate/mirror -> offset to
 	//   FB centre -> gate beam off when out of bounds (never clamp).
-	// Default (status 0): 0deg, no mirror, x1.25 (Fill) -> ~91% of 720 height, SOLID via the FB
+	// Default (status 0): 0deg, no mirror, x1.3125 (Fill) -> ~96% of 720 height, SOLID via the FB
 	// write-side line-fill (Bresenham-fills the gaps that scaling >1 would leave between the AVG's
 	// native-resolution walked points).  OSD can drop to Full(x1)/3-Qtr/Half if a scene clips.
 	// ------------------------------------------------------------------------
 	wire [9:0]  cx = tmp_x;                          // MH coords already centred (no bit-9 flip)
 	wire [9:0]  cy = tmp_y;
 
-	// OSD Vector Scale (effective scale = sc_num/4).  Default 0 = x1.25 ("Fill", ~91% of the 720
+	// OSD Vector Scale (effective scale = sc_n/16).  Default 0 = x1.3125 ("Fill", ~96% of the 720
 	// height) -- the vector_fb_ddram WRITE-SIDE LINE-FILL makes it SOLID (Bresenham-fills the gaps
-	// that scaling >1 would otherwise leave; sim 100% solid).  sc_num=5 needs the widened cxs[12:2].
-	wire [2:0]  sc_num = (osd_scale == 2'd0) ? 3'd5 : // x1.25 (Fill, default, solid via line-fill)
-	                     (osd_scale == 2'd1) ? 3'd4 : // x1
-	                     (osd_scale == 2'd2) ? 3'd3 : // x3/4
-	                                           3'd2;   // /2
-	wire [12:0] cxs  = cx * sc_num;                   // up to 1023*5 = 5115 (13 bits)
-	wire [12:0] cys  = cy * sc_num;
-	wire [10:0] sx   = cxs[12:2];                      // >>2  (up to 1278, 11 bits)
-	wire [10:0] sy   = cys[12:2];
-	wire [9:0]  half = {sc_num, 7'd0};                // sc_num*128 = scaled centre (256..640)
+	// that scaling >1 would otherwise leave; sim 100% solid).
+	//
+	// CENTERING is scale-locked on the AVG coord centre (512): the scaled centre is
+	// (512*sc_n)>>4 = sc_n*32 = {sc_n,5'd0} = `half` -- a PURE SHIFT, no multiply-then-
+	// truncate, so it is width-safe for every sc_n.  (A content-bbox re-centre written as
+	// `(537*sc_n)>>4` truncates the multiply to its narrow 11-bit target BEFORE the shift
+	// -> 64 instead of 704 -> the "4 quadrants" garble.  ModelSim-confirmed; do NOT
+	// reintroduce a multiply inside a narrow assignment.)  /16 granularity (sc_n up to 21)
+	// needs cxs widened to 15 bits and the >>4 taken on that WIDE wire (cxs[14:4]).
+	wire [4:0]  sc_n = (osd_scale == 2'd0) ? 5'd21 : // x1.3125 (Fill, default, solid via line-fill)
+	                   (osd_scale == 2'd1) ? 5'd16 : // x1
+	                   (osd_scale == 2'd2) ? 5'd12 : // x3/4
+	                                         5'd8;    // /2
+	wire [14:0] cxs  = cx * sc_n;                     // up to 1023*21 = 21483 (15 bits, FULL product)
+	wire [14:0] cys  = cy * sc_n;
+	wire [10:0] sx   = cxs[14:4];                      // >>4 on the WIDE wire (up to 1342, 11 bits)
+	wire [10:0] sy   = cys[14:4];
+	wire [9:0]  half = {sc_n, 5'd0};                  // sc_n*32 = (512*sc_n)>>4 = scaled centre (256..672)
 
 	wire signed [12:0] scx = $signed({2'b00, sx}) - $signed({3'b000, half});
 	wire signed [12:0] scy = $signed({2'b00, sy}) - $signed({3'b000, half});

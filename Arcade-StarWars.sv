@@ -302,7 +302,7 @@ localparam CONF_STR = {
 	"-;",
 	"O56,Rotate,0,90,180,270;",
 	"O7,Mirror,Off,On;",
-	"OUV,Vector Scale,Fill (1.25x),Full (1x),Three-Qtr,Half;",
+	"OUV,Vector Scale,Fill (1.31x),Full (1x),Three-Qtr,Half;",
 	"OA,Frame Gate,On,Off;",
 	"ORT,Persistence,12 (default),14,10,8,6,4,2,1 Crisp;",
 	"-;",
@@ -558,7 +558,7 @@ mhavoc_sw mhavoc_core
 	.osd_120hz_mode(osd_120hz_mode),
 	.osd_rotate(status[6:5]),
 	.osd_flip(status[7]),
-	.osd_scale(status[31:30]),     // Vector Scale OSD: 0=Fill(1.25x,default,SOLID via line-fill),1=Full,2=3/4,3=Half
+	.osd_scale(status[31:30]),     // Vector Scale OSD: 0=Fill(1.3125x,default,SOLID via line-fill),1=Full,2=3/4,3=Half
 	.osd_gate_bypass(status[10]),
 	.osd_persist(status[29:27]),   // Persistence (ORT=bits29:27): 0=12(default),1=14,2=10,3=8,4=6,5=4,6=2,7=1 Crisp(selective-erase)
 
