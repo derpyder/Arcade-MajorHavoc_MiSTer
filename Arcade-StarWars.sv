@@ -434,13 +434,15 @@ wire        [7:0] m_rate     = (m_amag != 8'd0) ? (m_amag - m_sq[15:8])
 // analog sign (m_ax[7]) and the D-pad (~joy[0]) so RIGHT -> ship RIGHT.
 wire              m_inc      = (m_amag != 8'd0) ? m_ax[7] : ~joy[0];
 
-// ===== MOUSE / SPINNER -> roller (ported from Tempest's "slowgain" build) =====
+// ===== MOUSE / SPINNER -> roller -- VELOCITY-SENSITIVE direct-add (fast spin = fast movement) =====
 // #3: accept a USB MOUSE (ps2_mouse) OR a dedicated USB spinner (spinner_0/1), whichever moved.
-// SLOWGAIN 3/4 (lossless carry) de-sensitizes slow drags for fine aim; STEP_CAP bounds a fast flick
-// (= "extreme less fast"). A RATE-PACED +-1 stepper makes velocity = step RATE, not size: each move
-// event queues |gained delta| +-1 steps in its direction; a pacer drains them at one per PACE_DIV.
-// MH's DIAL is 8-bit (wraps at 128, vs Tempest's 4-bit at 8) so a brisk pace (~34 steps/60Hz frame)
-// stays well under 128 -> no wrap-inversion.  XOR the spinner toggles (one-device updates always edge).
+// MH's DIAL is 8-bit (wraps at 128, vs Tempest's 4-bit at 8).  The ported Tempest RATE-PACED stepper
+// drained +-1 at a FIXED rate, so a fast spin only glided LONGER at the same capped speed -> felt
+// SLUGGISH.  MH never needed that pacing (the cap was a 4-bit-dial constraint), so instead we ADD the
+// spin delta DIRECTLY, scaled by a velocity-ramped gain: slow drag ~x1 (fine aim), fast flick ~x5
+// (quick), clamped per event so a burst stays under the 8-bit wrap.  Now MORE spin -> MORE speed, like
+// the analog stick.  XOR the spinner toggles (one-device updates always edge).
+// !! HW-TUNE: SP_STEP_MAX raises/lowers the TOP speed (too high -> a very fast spin can wrap = wrong dir).
 wire        sp_tgl    = spinner_0[8] ^ spinner_1[8];
 reg         sp_tgl_d  = 1'b0;
 reg         ps2_tgl_d = 1'b0;
@@ -450,19 +452,13 @@ wire        spin_evt  = sp_tgl  ^ sp_tgl_d;
 wire signed [8:0] ps2_dx = $signed({ps2_mouse[4], ps2_mouse[15:8]});           // mouse X (Arkanoid decode)
 wire signed [8:0] sp_dx  = $signed(spinner_0[7:0]) + $signed(spinner_1[7:0]);  // dedicated spinner X
 wire signed [8:0] sp_in  = ps2_evt ? ps2_dx : sp_dx;                           // per-event signed delta
-wire        [8:0] sp_mag = sp_in[8] ? (~sp_in + 9'd1) : sp_in;                 // |delta|
-// slowgain 3/4: scaled = mag*3 + carry; steps = scaled>>2; remainder kept (small moves never floored)
-reg  [1:0]  sp_frac   = 2'd0;
-wire [10:0] sp_scaled = {1'b0,sp_mag} + {sp_mag,1'b0} + {9'd0,sp_frac};
-wire [8:0]  sp_steps  = sp_scaled[10:2];
-wire [1:0]  sp_remn   = sp_scaled[1:0];
-
-localparam [15:0] PACE_DIV = 16'd6000;  // one +-1 every ~0.5ms -> ~34 steps/60Hz frame (<<128, safe)
-localparam [9:0]  STEP_CAP = 10'd20;    // bound a hard flick's glide
-reg  [9:0]  sp_queue = 10'd0;
-reg         sp_qdir  = 1'b0;            // 1 = dial DOWN. MH dial is PORT_REVERSE (old code: m_dial -=
-                                        // delta) so a +delta -> down. !! HW-VERIFY: flip ~sp_in[8] if reversed.
-reg  [15:0] sp_pace  = 16'd0;
+wire        [8:0] sp_mag = sp_in[8] ? (~sp_in + 9'd1) : sp_in;                 // |delta| = spin velocity
+// velocity-ramped gain: 1 + |delta|/2, clamped to [1..5] (slow drag = fine, fast flick = quick)
+wire        [3:0] sp_gain   = (sp_mag >= 9'd8) ? 4'd5 : (4'd1 + sp_mag[3:1]);
+wire signed [13:0] sp_scaled = $signed(sp_in) * $signed({1'b0, sp_gain});      // velocity-scaled jump
+localparam signed [13:0] SP_STEP_MAX = 14'sd24;   // per-event dial clamp: TOP speed vs 8-bit wrap headroom
+wire signed [13:0] sp_step = (sp_scaled >  SP_STEP_MAX) ?  SP_STEP_MAX
+                           : (sp_scaled < -SP_STEP_MAX) ? -SP_STEP_MAX : sp_scaled;
 
 reg  [7:0]  m_dial  = 8'd0;
 reg  [18:0] m_phase = 19'd0;
@@ -474,24 +470,11 @@ always @(posedge clk_12) begin
 	m_phase   <= m_phase + m_rate;
 
 	if ((ps2_evt | spin_evt) && (sp_mag != 9'd0)) begin
-		// new mouse/spinner movement: queue the gained +-1 steps in its (reversed) direction
-		if ((~sp_in[8]) == sp_qdir) begin
-			sp_frac  <= sp_remn;
-			sp_queue <= (sp_queue + sp_steps > STEP_CAP) ? STEP_CAP : (sp_queue + sp_steps);
-		end else begin
-			sp_qdir  <= ~sp_in[8];
-			sp_frac  <= sp_remn;
-			sp_queue <= ({1'b0,sp_steps} > STEP_CAP) ? STEP_CAP : {1'b0,sp_steps};
-		end
-	end else if (sp_queue != 10'd0) begin
-		// drain at one +-1 per PACE_DIV ticks (velocity = step rate) -- direction-safe on the 8-bit dial
-		if (sp_pace == 16'd0) begin
-			sp_pace  <= PACE_DIV;
-			sp_queue <= sp_queue - 10'd1;
-			m_dial   <= m_dial + (sp_qdir ? -8'sd1 : 8'sd1);
-		end else sp_pace <= sp_pace - 16'd1;
+		// VELOCITY-SENSITIVE direct add: faster spin -> bigger jump.  PORT_REVERSE (+spin -> dial DOWN,
+		// matches the old `m_dial -= delta`).  !! HW-VERIFY direction: flip the sign if the ship goes wrong.
+		m_dial <= m_dial - sp_step[7:0];
 	end else if (m_phase[18] & ~m_pamsb) begin
-		// analog-stick NCO tick (or D-pad fallback) when no mouse/spinner queue is draining
+		// analog-stick NCO tick (or D-pad fallback) when no mouse/spinner movement
 		m_dial <= m_dial + (m_inc ? 8'd1 : -8'd1);
 	end
 end
