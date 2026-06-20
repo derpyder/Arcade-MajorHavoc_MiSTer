@@ -14,8 +14,8 @@
 	<setname>mhavoc</setname>
 	<parent>mhavoc</parent>
 	<mameversion>0287</mameversion>
-	<rbf>Arcade-MajorHavoc</rbf>
-	<about>Major Havoc on the Star Wars DDR-framebuffer chassis. Dual 6502 (alpha+gamma) + colour AVG + banked vector ROM, rendered by the proven SW vector_fb_ddram. v0.1 bring-up: quad POKEY audio (P4) and DSW1 gameplay DIPs (read via POKEY) are NOT yet wired; coinage (DSW2) + roller + fire/shield work.</about>
+	<rbf>MajorHavoc</rbf>
+	<about>Major Havoc on the Star Wars DDR-framebuffer chassis. Dual 6502 (alpha+gamma) + colour AVG + banked vector ROM, rendered by the proven SW vector_fb_ddram. Quad-POKEY audio, authentic speed (clock-enabled 12.096 MHz chassis), DSW1 + DSW2 DIPs, roller (spinner/mouse/stick), fire and shield all working.</about>
 
 	<resolution>31kHz</resolution>
 	<rotation>horizontal</rotation>
@@ -44,17 +44,17 @@
 	-->
 
 	<switches default="00,FF">
-		<!-- DSW1 (13/14S). sw[0]. !! Read via POKEY 0 allpot -> NOT wired until P4 (quad POKEY); inert for now. -->
+		<!-- DSW1 (13/14S). sw[0] -> POKEY 0 allpot ($2000). Matches MAME mhavoc. -->
 		<dip bits="0" ids="On,Off" name="Adaptive Difficulty"></dip>
 		<dip bits="1" ids="On,Off" name="Demo Sounds"></dip>
 		<dip bits="2,3" ids="100000,200000,None,50000" name="Bonus Life"></dip>
 		<dip bits="4,5" ids="Medium,Easy,Demo,Hard" name="Difficulty"></dip>
 		<dip bits="6,7" ids="3,6,5,4" name="Lives"></dip>
-		<!-- DSW2 (8S). sw[1] -> gamma $4000 (mh_dsw2). Coinage WORKS now. -->
+		<!-- DSW2 (8S). sw[1] -> gamma $4000 (mh_dsw2). Default FF = MAME default (1C/1C, x1, x1, None). -->
 		<dip bits="8,9" ids="1C 2C,Free Play,2C 1C,1C 1C" name="Coinage"></dip>
 		<dip bits="10,11" ids="x6,x5,x4,x1" name="Right Coin"></dip>
 		<dip bits="12" ids="x2,x1" name="Left Coin"></dip>
-		<dip bits="13,14,15" ids="None,2 each 4,1 each 3,1 each 5,1 each 4,*,*,*" name="Bonus Credits"></dip>
+		<dip bits="13,14,15" ids="None,None,1 each 3,1 each 5,2 each 4,1 each 4,None,None" name="Bonus Adder"></dip>
 	</switches>
 
 	<rom index="0" md5="none" type="merged|nonmerged" zip="mhavoc.zip">
@@ -69,7 +69,7 @@
 		<part crc="5903af03" name="136002-125.6c"></part>
 		</rom>
 
-	<remark>Major Havoc v0.1 — Star Wars DDR chassis. clk_12 first-cut (game ~20% fast); audio (quad POKEY) + DSW1 gameplay DIPs pending P4. Orientation/roller direction are HW-tunable (OSD Rotate/Mirror).</remark>
+	<remark>Major Havoc — Star Wars DDR chassis. Authentic speed via clock-enable on the 12.096 MHz chassis clock; quad-POKEY audio; DSW1 (POKEY 0 allpot) + DSW2 (gamma $4000) DIPs both wired. Orientation/roller direction are HW-tunable (OSD Rotate/Mirror). Hi-score not persisted (EAROM stubbed).</remark>
 
-	<mratimestamp>20260531000000</mratimestamp>
+	<mratimestamp>20260620000000</mratimestamp>
 </misterromdescription>

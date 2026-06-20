@@ -90,9 +90,12 @@ supports a fast **selective-erase** path (replay only the drawn pixels as black,
 
 ## Install
 
-1. Copy **`releases/Arcade-MajorHavoc.rbf`** to your MiSTer's `_Arcade/cores/`
-   (keep exactly one `Arcade-MajorHavoc*.rbf` there).
-2. Copy **`releases/MajorHavoc.mra`** to `_Arcade/`.
+1. Copy **`releases/Arcade-MajorHavoc_<date>.rbf`** to your MiSTer's `_Arcade/cores/`
+   and rename it to **`MajorHavoc.rbf`** (keep exactly one `MajorHavoc*.rbf` there). The
+   MRA's `<rbf>MajorHavoc</rbf>` matches this name; the firmware ignores any `_<date>`
+   suffix, so `MajorHavoc_20260605.rbf` works too. *(This matches the MiSTer Distribution
+   layout, where the `Arcade-` prefix is stripped — see [update_all](#update_all-distribution).)*
+2. Copy **`releases/Major Havoc.mra`** to `_Arcade/`.
 3. **Required:** put the Major Havoc romset **`mhavoc.zip`** (MAME `mhavoc`) in
    `games/mame/`. **The core will not run without it** — the MRA loads the ROMs
    from this zip. ROMs are not included in this repo or release.
@@ -127,6 +130,29 @@ Beyond the standard MiSTer video/scaler options, this core exposes:
   frame (**12** default, then 14 / 10 / 8 / 6 / 4 / 2 / 1 "Crisp"). Higher = more
   phosphor-like fill and steadier image; lower = crisper but flickerier (1 = the
   selective-erase 60 Hz path).
+
+## update_all / Distribution
+
+This repo follows the MiSTer external-core layout that theypsilon's
+[Distribution_Unofficial_MiSTer](https://github.com/theypsilon/Distribution_Unofficial_MiSTer)
+scanner expects, so it can be tracked by `update_all`:
+
+- The core lives in **`releases/`** as a **date-stamped** `Arcade-MajorHavoc_<YYYYMMDD>.rbf`
+  (the scanner skips any un-dated `.rbf` and always picks the newest date).
+- The installer copies it to `_Arcade/cores/` **stripping the `Arcade-` prefix** →
+  `MajorHavoc_<date>.rbf`, which is why the MRA uses `<rbf>MajorHavoc</rbf>`.
+- The `.mra` sits in `releases/` and is copied to `_Arcade/`.
+
+To get it tracked, theypsilon adds one row to that repo's `external_mister_repos.csv`:
+`https://github.com/derpyder/Arcade-MajorHavoc_MiSTer, _Arcade,,`. (Note: that repo's
+README currently says "No new cores will be added," so acceptance is at theypsilon's
+discretion — until then, users can add the repo to their own `downloader.ini`.)
+
+## 480p @ 120 Hz on a CRT PC monitor
+
+This core can be driven at **480p120 on a multisync CRT PC monitor** via `MiSTer.ini`
+(no rebuild needed). See **[docs-480p120-crt.md](docs-480p120-crt.md)** for the exact
+settings, the scan-rate math, and the monitor requirement.
 
 ## Known limitations
 
