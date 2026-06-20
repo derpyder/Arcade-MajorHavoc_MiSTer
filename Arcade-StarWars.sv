@@ -302,6 +302,7 @@ localparam CONF_STR = {
 	"-;",
 	"O56,Rotate,0,90,180,270;",
 	"O7,Mirror,Off,On;",
+	"OBD,Roller Sensitivity,Default,Low,Lower,High,Higher;",
 	"OUV,Vector Scale,Fill (1.31x),Full (1x),Three-Qtr,Half;",
 	"OA,Frame Gate,On,Off;",
 	"ORT,Persistence,12 (default),14,10,8,6,4,2,1 Crisp;",
@@ -456,9 +457,26 @@ wire        [8:0] sp_mag = sp_in[8] ? (~sp_in + 9'd1) : sp_in;                 /
 // velocity-ramped gain: 1 + |delta|/2, clamped to [1..5] (slow drag = fine, fast flick = quick)
 wire        [3:0] sp_gain   = (sp_mag >= 9'd8) ? 4'd5 : (4'd1 + sp_mag[3:1]);
 wire signed [13:0] sp_scaled = $signed(sp_in) * $signed({1'b0, sp_gain});      // velocity-scaled jump
-localparam signed [13:0] SP_STEP_MAX = 14'sd24;   // per-event dial clamp: TOP speed vs 8-bit wrap headroom
-wire signed [13:0] sp_step = (sp_scaled >  SP_STEP_MAX) ?  SP_STEP_MAX
-                           : (sp_scaled < -SP_STEP_MAX) ? -SP_STEP_MAX : sp_scaled;
+// OSD Roller Sensitivity (status[13:11]): scale the velocity-mapped step AND the per-event clamp by a
+// selectable factor num/4.  Index 0 = Default = x1 (the HW-tuned value, identical to the previous fixed
+// step/clamp); higher = more dial movement per unit of roller/mouse motion.  Per-event magnitude stays
+// well under the 8-bit-dial wrap (max x2 -> +-48 < 128), so single events remain direction-safe; the
+// highest setting raises top speed, so back off one notch if a very fast flick ever reverses on HW.
+reg  [3:0] roll_num;                                                           // sensitivity = roll_num/4
+always @(*) case (status[13:11])
+	3'd0: roll_num = 4'd4;   // Default  x1 (current)
+	3'd1: roll_num = 4'd3;   // Low      x3/4
+	3'd2: roll_num = 4'd2;   // Lower    x1/2
+	3'd3: roll_num = 4'd6;   // High     x3/2
+	3'd4: roll_num = 4'd8;   // Higher   x2
+	default: roll_num = 4'd4;
+endcase
+wire signed [4:0]  roll_num_s = $signed({1'b0, roll_num});                     // small positive signed
+wire signed [19:0] sp_scaled2 = (sp_scaled * roll_num_s) >>> 2;               // step  * num/4
+wire signed [19:0] sp_clamp   = (20'sd24  * roll_num_s) >>> 2;                // clamp * num/4 (=24 default)
+wire signed [19:0] sp_step20 = (sp_scaled2 >  sp_clamp) ?  sp_clamp
+                             : (sp_scaled2 < -sp_clamp) ? -sp_clamp : sp_scaled2;
+wire signed [13:0] sp_step  = sp_step20[13:0];     // clamped to +-48 max, fits the original width
 
 reg  [7:0]  m_dial  = 8'd0;
 reg  [18:0] m_phase = 19'd0;
@@ -533,20 +551,9 @@ assign AUDIO_S = 0;   // Tempest POKEY audio is UNSIGNED (pokey.vhd: 0=silence..
                       //  -> torn waveform = harsh/thin "half the chip" sound.  Both POKEYs are fine.)
 wire vgade;
 
-wire [7:0] m_dsw0 = {
-	~status[16],       // [7] Freeze (OG, 0=Off, 1=On -> ~0 = 1 = Off)
-	status[13],        // [6] Demo Sounds (OD, 0=On, 1=Off)
-	status[12:11],     // [5:4] Bonus Shields (OBC)
-	status[10:9] + 2'd1,   // [3:2] Difficulty (O9A, rotated +1: 0=Mod,1=Hard,2=Hrd+,3=Easy)
-	status[8:7]        // [1:0] Starting Shields (O78)
-};
-
-wire [7:0] m_dsw1 = {
-	status[24:22],     // [7:5] Bonus Coin Adder (OMNO)
-	status[21],        // [4] Left Coin (OL)
-	status[20:19],     // [3:2] Right Coin (OJK)
-	status[18:17] + 2'd2   // [1:0] Coinage (OHI, rotated +2: 0=1P/C,1=2C/P,2=Free,3=2P/C)
-};
+// (Removed dead Star Wars m_dsw0/m_dsw1 leftovers: they were never read by the Major Havoc core
+//  (LHS-only wires) and referenced status bits now reused by Roller Sensitivity (status[13:11]).
+//  Major Havoc's real DIPs come from the MRA via the sw[] array, not from these.)
 
 mhavoc_sw mhavoc_core
 (
