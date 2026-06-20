@@ -40,7 +40,7 @@
 	    dn 0x14000  136025.210  (8K)   vector ROM (.210) -> AVG pc $1000-$1FFF
 	    dn 0x16000  136025.106  (16K)  banked vector ROM, banks 0+1 -> AVG pc $2000-$3FFF (m_map)
 	    dn 0x1A000  136025.107  (16K)  banked vector ROM, banks 2+3
-	    dn 0x1E000  136002-125.6c (256) AVG state/colour PROM -- behavioral AVG hardcodes it, IGNORED.
+	    dn 0x1E000  136002-125.6c (256) AVG state/colour PROM - behavioral AVG hardcodes it, IGNORED.
 	-->
 
 	<switches default="00,FF">
