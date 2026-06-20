@@ -43,6 +43,7 @@ entity majorhavoc is
     -- inputs
     IN0              : in  std_logic_vector(7 downto 0);  -- alpha $1200 (coins/diag/cocktail/self-test)
     IN1              : in  std_logic_vector(7 downto 0);  -- gamma $2800 (fire/shield + flags)
+    DSW1             : in  std_logic_vector(7 downto 0);  -- POKEY 0 allpot ($2000): gameplay DIPs
     DSW2             : in  std_logic_vector(7 downto 0);  -- gamma $4000
     DIAL             : in  std_logic_vector(7 downto 0);  -- gamma $3800 roller
 
@@ -500,12 +501,13 @@ begin
   BEAM_ENA <= '1' when rgb_out_i /= "000" else '0';
 
   -- ---- Quad POKEY (gamma $2000-$203F): 4 chips, audio summed -> analog_sound_out ----
-  -- ENA = gamma_ena (1.25 MHz, MHAVOC_CLOCK_1_25M); CLK = master.  PIN tied 0 (= default DSW1 via
-  -- POKEY0 ALLPOT -- same as the prior stub; OSD-tunable DSW1 is a small follow-up).  Pattern from
-  -- tempest.vhd's 2x POKEY.  AUDIO_S=0 (unsigned) is set in the top.
+  -- ENA = gamma_ena (1.25 MHz, MHAVOC_CLOCK_1_25M); CLK = master.  Pattern from tempest.vhd's
+  -- 2x POKEY.  AUDIO_S=0 (unsigned) is set in the top.
+  -- DSW1 (gameplay DIPs) is read by the game through POKEY 0's ALLPOT register, so its 8 pot
+  -- pins carry the DSW1 byte (MAME mhavoc: m_pokey[0]->allpot_r).  POKEYs 1-3 have no pots wired.
   p0: entity work.pokey port map (
     ADDR=>pokey_addr, DIN=>g_dout, DOUT=>p0_dout, DOUT_OE_L=>open, RW_L=>g_rw_l,
-    CS=>'1', CS_L=>p0_cs_l, AUDIO_OUT=>p0_audio, PIN=>x"00", ENA=>gamma_ena, CLK=>clk );
+    CS=>'1', CS_L=>p0_cs_l, AUDIO_OUT=>p0_audio, PIN=>DSW1, ENA=>gamma_ena, CLK=>clk );
   p1: entity work.pokey port map (
     ADDR=>pokey_addr, DIN=>g_dout, DOUT=>p1_dout, DOUT_OE_L=>open, RW_L=>g_rw_l,
     CS=>'1', CS_L=>p1_cs_l, AUDIO_OUT=>p1_audio, PIN=>x"00", ENA=>gamma_ena, CLK=>clk );

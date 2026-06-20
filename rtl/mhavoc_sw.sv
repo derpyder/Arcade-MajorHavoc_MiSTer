@@ -12,11 +12,11 @@
 //     (xout = ~vd_x(9) & vd_x(8:0) = +512), so cx = tmp_x directly (Tempest's
 //     tempest.vhd emits raw-centred-at-0 coords, hence its {~tmp_x[9],..} flip).
 //   * clk = clk_12 (12.096 MHz).  MH wants 10 MHz (alpha=clk/4=2.5MHz, gamma=clk/8, IRQ=clk/2048,
-//     POKEY via gamma_ena) so the game runs ~21% fast.  A clk_10 PLL-split fix BLACK-SCREENED: the
-//     ROM-download strobe (dn_wr = ioctl_wr, clk_12) was missed by the slower clk_10 game domain ->
-//     corrupted ROM.  PROPER FIX (TODO, HANDOFF 8f): keep clk=clk_12 and gate clkdiv + irq5k with a
-//     ~5/6 clock-enable -> alpha/gamma/POKEY (all ride gamma_ena/alpha_ena) slow to ~10.08 MHz, no CDC.
-//   * Audio = silence for now (quad POKEY is P4; analog_sound_out is stubbed).
+//     POKEY via gamma_ena).  A clk_10 PLL-split BLACK-SCREENED (the clk_12 ROM-download strobe was
+//     missed by the slower clk_10 game domain -> corrupted ROM).  SPEED FIX (now in majorhavoc.vhd):
+//     keep clk=clk_12 and gate clkdiv + irq5k with a ~5/6 clock-enable -> alpha/gamma/POKEY all ride
+//     gamma_ena/alpha_ena and slow to authentic ~10.08 MHz, no CDC.
+//   * Audio = quad POKEY (4 chips summed) in majorhavoc.vhd -> analog_sound_out (unsigned).
 //
 // !! HW-TUNABLE (first pass, same as Tempest): the coords->980x720 mapping
 //    (orientation + scale, OSD knobs) and the Z intensity.  Tune on the cab.
@@ -80,6 +80,7 @@ module mhavoc_sw (
 	// Major Havoc inputs
 	input   [7:0] in0,    // alpha $1200: b7:6=coin/service mux, b5=service1, b4=diag (all act-low); b3:0 internal
 	input   [7:0] in1,    // gamma $2800: b7=P1 fire, b6=P1 shield, b5=P2 fire, b4=P2 shield (act-low); b1:0 internal
+	input   [7:0] dsw1,   // POKEY 0 allpot ($2000): gameplay DIPs
 	input   [7:0] dsw2,   // gamma $4000: coinage DIP
 	input   [7:0] dial,   // gamma $3800: 8-bit roller position
 
@@ -103,7 +104,8 @@ module mhavoc_sw (
 
 	majorhavoc mhavoc_game (
 		.reset_h(reset),
-		.clk(clk_12),                 // 12.096 MHz -> game ~21% fast (TODO gate to ~10MHz; HANDOFF 8f)
+		.clk(clk_12),                 // 12.096 MHz chassis clock; majorhavoc.vhd gates alpha/gamma/POKEY
+		                              // via gamma_ena/alpha_ena (~5/6) for authentic ~10.08 MHz speed.
 		.pause_h(1'b0),
 		.analog_sound_out(tmp_audio),
 		.analog_x_out(tmp_x),
@@ -113,6 +115,7 @@ module mhavoc_sw (
 		.rgb_out(tmp_rgb),
 		.IN0(in0),
 		.IN1(in1),
+		.DSW1(dsw1),
 		.DSW2(dsw2),
 		.DIAL(dial),
 		.frame_done(tmp_frame_done),
@@ -305,7 +308,7 @@ module mhavoc_sw (
 	);
 
 	// ------------------------------------------------------------------------
-	// Audio: quad POKEY is P4 (not yet) -> silence.  MH POKEY will be UNSIGNED
+	// Audio: quad POKEY (summed in majorhavoc.vhd) -> tmp_audio, 8-bit UNSIGNED
 	// (AUDIO_S=0 in the top, per the Tempest lesson).  Mono -> both channels.
 	// ------------------------------------------------------------------------
 	assign audio_out_l = {tmp_audio, tmp_audio};

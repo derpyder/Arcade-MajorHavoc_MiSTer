@@ -493,7 +493,9 @@ wire [7:0] mh_in0 = {1'b1, ~m_coin, 1'b1, 1'b1, 4'b1111};
 // IN1 (gamma $2800, active-low): b7=P1 fire, b6=P1 shield, b5=P2 fire, b4=P2 shield,
 // b3:2 unused(=1).  b1:0 supplied inside majorhavoc (comms) -> don't-care (=1).
 wire [7:0] mh_in1 = {~m_fire, ~m_shield, 1'b1, 1'b1, 2'b11, 2'b11};
-// DSW2 (gamma $4000) coinage from the MRA DIPs (sw[1]); default 0 = 1C/2C (lenient).
+// DSW1 (gameplay: difficulty/lives/bonus/demo) from the MRA DIPs (sw[0]) -> POKEY 0 allpot.
+wire [7:0] mh_dsw1 = sw[0];
+// DSW2 (gamma $4000) coinage from the MRA DIPs (sw[1]); MRA default FF = MAME default (1C/1C).
 wire [7:0] mh_dsw2 = sw[1];
 
 wire mod_starwars = 1'b0;
@@ -602,9 +604,10 @@ mhavoc_sw mhavoc_core
 	.vblank(vblank),
 	.hblank(hblank),
 
-	// Major Havoc inputs (IN0 coins/service, IN1 fire/shield, DSW2 coinage, DIAL roller)
+	// Major Havoc inputs (IN0 coins/service, IN1 fire/shield, DSW1 gameplay, DSW2 coinage, DIAL roller)
 	.in0(mh_in0),
 	.in1(mh_in1),
+	.dsw1(mh_dsw1),
 	.dsw2(mh_dsw2),
 	.dial(m_dial),
 
