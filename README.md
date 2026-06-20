@@ -119,6 +119,10 @@ Beyond the standard MiSTer video/scaler options, this core exposes:
 
 - **Aspect ratio** — *Optimized* (auto scale to your output) or *Pixel Perfect* (1:1).
 - **Rotate / Flip** — orientation relative to the built-in baseline.
+- **Roller Sensitivity** — how much the ship moves per unit of roller/mouse/stick
+  motion: *Default* (the tuned value) / *Low* (×¾) / *Lower* (×½) / *High* (×1½) /
+  *Higher* (×2). Scales both the velocity step and its per-event clamp; *Default*
+  matches the previous feel exactly.
 - **Vector Scale** — *Fill (1.25×)* / *Full (1×)* / *Three-Qtr* / *Half*. Fill is the
   default; drop it if a scene clips on your display.
 - **Frame Gate** — *On* (normal) presents via the persistence gate; *Off* is a
